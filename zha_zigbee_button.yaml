@@ -35,7 +35,7 @@ blueprint:
       default: []
       selector:
         action: {}
-  source_url: https://github.com/msx2/home_assistant_blueprints/blob/main/zha_zigbee_buttons.yaml
+  source_url: https://github.com/msx2/home_assistant_blueprints/blob/main/zha_zigbee_button.yaml
 
 variables:
   zha_button_ids: !input 'zha_button_ids'
