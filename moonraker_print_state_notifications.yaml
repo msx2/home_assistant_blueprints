@@ -1,0 +1,127 @@
+blueprint:
+  name: Moonraker Print State Notifications
+  description: >
+    Send notifications when a print is paused or completed. Optionally include a snapshot from a camera and control a cavity light.
+
+      ## ⚠️ Attention ⚠️
+
+      - If you want to include snapshots in notifications, ensure your printer has a compatible camera and select it in the inputs. The automation will save temporary snapshot files in the `/www/snapshots/` directory, so make sure this directory exists and is writable.
+      - Make sure to set up a shell command named `delete_file` in your Home Assistant configuration to allow the automation to delete temporary snapshot files after sending notifications. You can add the following to your `configuration.yaml`:
+
+        ```yaml
+        shell_command:
+          delete_file: 'rm {{ filename }}'
+        ```
+
+        If not added, your automation may fail and won't delete snapshot files, which could lead to storage issues over time. This shell command is essential for maintaining a clean file system by removing temporary images after they have been used in notifications.
+  domain: automation
+  input:
+    printer_name:
+      name: Printer Name
+      description: Name of the printer that will be displayed as a title for notifications (and used as temporary snapshot file name, if camera is provided)
+      selector:
+        text: {}
+    printer_sensor:
+      name: Print State Sensor
+      description: Sensor that indicates the print state, usually it's `sensor.{prefix}_current_print_state`
+      selector:
+        entity:
+          domain: sensor
+    camera_sensor:
+      name: Camera Entity (Optional)
+      description: Select camera entity to take snapshot when print completes, if your printer supports it
+      default: ""
+      selector:
+        entity:
+          domain: camera
+    printer_light:
+      name: Printer Light (Optional)
+      description: Select a light entity to turn off after print completes, if your printer supports it
+      default: ""
+      selector:
+        entity:
+          domain: light
+    notify_service:
+      name: Notification Service
+      description: Enter the service name, e.g., `notify.mobile_app_iphone`. You can find it in `Developer Tools > Actions`, look for services starting with `notify.` and choose the one corresponding to your mobile device or notification platform.
+      default: notify.notify
+      selector:
+        text: {}
+  source_url: https://github.com/msx2/home_assistant_blueprints/blob/main/moonraker_print_state_notifications.yaml
+
+
+trigger:
+  - platform: state
+    entity_id: !input printer_sensor
+    to:
+      - "complete"
+      - "paused"
+
+variables:
+  printer_name: !input printer_name
+  camera_sensor: !input camera_sensor
+  printer_light: !input printer_light
+  notification_service: !input notify_service
+
+  ts: "{{ now().timestamp() }}"
+  printer_name_clean: "{{ printer_name | replace(' ', '_') | lower }}"
+  filename: "/config/www/snapshots/{{ printer_name_clean }}_{{ ts }}.jpg"
+  image_url: "/local/snapshots/{{ printer_name_clean }}_{{ ts }}.jpg"
+
+action:
+  - choose:
+      # --- Print Completed ---
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.state == 'complete' }}"
+        sequence:
+          # Snapshot logic
+          - if:
+              - condition: template
+                value_template: "{{ camera_sensor != '' }}"
+            then:
+              - service: camera.snapshot
+                data:
+                  entity_id: "{{ camera_sensor if camera_sensor != '' else 'camera.none' }}"
+                  filename: "{{ filename }}"
+
+          # Send notification
+          - service: "{{ notification_service }}"
+            data:
+              title: "{{ printer_name }}"
+              message: "Print completed"
+              data:
+                image: "{{ image_url if camera_sensor != '' else none }}"
+
+          # Turn off the light
+          - if:
+              - condition: template
+                value_template: "{{ printer_light != '' }}"
+            then:
+              - service: light.turn_off
+                data:
+                  entity_id: "{{ printer_light if printer_light != '' else 'light.none' }}"
+
+          # Delete temporary snapshot
+          - if:
+              - condition: template
+                value_template: "{{ camera_sensor != '' }}"
+            then:
+              # Add a small delay to ensure the file is not deleted before the notification can access it
+              - delay: "00:00:15"
+              - service: shell_command.delete_file
+                data:
+                  filename: "{{ filename }}"
+
+      # --- Print Paused ---
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.to_state.state == 'paused' }}"
+        sequence:
+          # Send notification
+          - service: "{{ notification_service }}"
+            data:
+              title: "{{ printer_name }}"
+              message: "Print paused"
+
+mode: single
