@@ -14,6 +14,11 @@ shell_command:
 [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fmsx2%2Fhome_assistant_blueprints%2Fblob%2Fmain%2Fmoonraker_print_state_notifications.yaml)
 
 
+### Notification examples
+<img src="https://raw.githubusercontent.com/msx2/home_assistant_blueprints/refs/heads/main/assets/moonraker_print_state_notifications/notifications.jpg" width="500">
+<img src="https://raw.githubusercontent.com/msx2/home_assistant_blueprints/refs/heads/main/assets/moonraker_print_state_notifications/completed.jpg" width="500">
+
+
 ## ZHA Zigbee Button
 
 This blueprint allows you to use a Zigbee button configured with `Zigbee Home Automation` integration to control various actions in Home Assistant. You can configure single press, double press, and long press actions.
